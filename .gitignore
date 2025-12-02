@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist-python/
+build/
+*.egg
+.venv/
+venv/
+ENV/
+env/
+
+# 模型文件（体积大，不应提交）
+data/models/
+*.gguf
+*.pth
+*.bin
+*.safetensors
+
+# 数据库文件（包含用户数据）
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.turbo/
+
+# 前端构建产物
+app/static/index.html
+app/static/assets/
+app/static/*.js
+app/static/*.css
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 测试
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+*.cache
+.cache/
