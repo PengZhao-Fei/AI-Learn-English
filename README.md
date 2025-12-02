@@ -107,9 +107,9 @@ python -m app.main
 
 ### API 接口
 
-主要 API 端点:
+主要 API 端点：
 
-- `POST /api/chat` - 与 AI 对话
+- **`POST /api/chat`** - 与 AI 对话
 
   ```json
   {
@@ -118,7 +118,7 @@ python -m app.main
   }
   ```
 
-- `POST /api/tts` - 文本转语音
+- **`POST /api/tts`** - 文本转语音
 
   ```json
   {
@@ -126,7 +126,7 @@ python -m app.main
   }
   ```
 
-- `POST /api/courses/import` - 导入课程
+- **`POST /api/courses/import`** - 导入课程
 
   ```json
   {
@@ -134,8 +134,10 @@ python -m app.main
   }
   ```
 
-- `GET /api/courses` - 获取所有课程
-- `GET /api/courses/{course_id}/lessons` - 获取课程的课时列表
+- **`GET /api/courses`** - 获取所有课程
+- **`GET /api/courses/{course_id}/lessons`** - 获取课程的课时列表
+
+**完整 API 文档**：http://localhost:8000/docs
 
 ### 导入产品叙事课程
 
@@ -151,43 +153,59 @@ python scripts/import_curriculum.py --replace
 
 ```
 english_learning_assistant/
-├── app/
-│   ├── api/              # API路由
-│   │   └── endpoints.py  # 所有API端点
-│   ├── core/             # 核心配置
-│   │   └── config.py     # 应用配置
-│   ├── models/           # 数据模型
-│   │   └── database.py   # SQLite数据库
-│   ├── services/         # 业务逻辑
-│   │   ├── llm_service.py      # LLM服务
-│   │   ├── tts_service.py      # TTS服务
-│   │   └── content_service.py  # 内容抓取服务
-│   ├── static/           # 前端文件
-│   │   ├── index.html    # 主页面
-│   │   ├── app.js        # 前端逻辑
-│   │   └── style.css     # 样式
-│   └── main.py           # FastAPI应用入口
+├── app/                      # 后端应用
+│   ├── api/                  # API 路由
+│   │   └── endpoints.py      # 所有 API 端点
+│   ├── core/                 # 核心配置
+│   │   └── config.py         # 应用配置
+│   ├── models/               # 数据模型
+│   │   └── database.py       # SQLite 数据库模型
+│   ├── services/             # 业务逻辑
+│   │   ├── llm_service.py    # LLM 服务
+│   │   ├── tts_service.py    # TTS 服务
+│   │   └── content_service.py # 内容抓取服务
+│   ├── static/               # 前端构建产物（生产环境）
+│   └── main.py               # FastAPI 应用入口
+├── frontend/                 # 前端应用
+│   ├── src/                  # 源代码
+│   │   ├── App.tsx           # 主应用组件
+│   │   ├── api.ts            # API 客户端
+│   │   └── ...
+│   ├── dist/                 # 构建输出（自动生成）
+│   ├── package.json          # 前端依赖配置
+│   ├── vite.config.ts        # Vite 配置
+│   └── tsconfig.json         # TypeScript 配置
 ├── data/
-│   ├── models/           # 模型文件存储
-│   │   ├── llm/          # LLM模型
-│   │   └── tts/          # TTS模型
-│   └── learning.db       # SQLite数据库
+│   ├── models/               # 模型文件存储
+│   │   ├── llm/              # LLM 模型
+│   │   └── tts/              # TTS 模型
+│   └── learning.db           # SQLite 数据库
 ├── scripts/
-│   ├── download_models.py       # 模型下载脚本
-│   └── import_curriculum.py     # 导入课程数据
-├── requirements.txt      # Python依赖
-├── start.sh             # 启动脚本
-└── README.md            # 本文件
+│   ├── download_models.py    # 模型下载脚本
+│   └── import_curriculum.py  # 导入课程数据
+├── requirements.txt          # Python 依赖
+└── README.md                 # 本文件
 ```
 
 ## 🛠️ 技术栈
 
-- **后端框架**: FastAPI
-- **LLM**: Qwen2.5-7B-Instruct (通过 llama-cpp-python 运行)
-- **TTS**: Edge-TTS (默认) / Coqui XTTS-v2
-- **数据库**: SQLite3
-- **前端**: 原生 HTML + CSS + JavaScript
-- **内容抓取**: BeautifulSoup4
+**后端**：
+
+- FastAPI - Web 框架
+- llama-cpp-python - LLM 推理引擎
+- Qwen2.5-7B-Instruct GGUF - 大语言模型
+- Edge-TTS - 文本转语音（默认）
+- Coqui XTTS-v2 - 高级 TTS（可选）
+- SQLite3 - 数据库
+- BeautifulSoup4 - 网页内容抓取
+
+**前端**：
+
+- React 19 - UI 框架
+- TypeScript - 类型安全
+- Vite - 构建工具
+- Ant Design - UI 组件库
+- Axios - HTTP 客户端
 
 ## ⚙️ 配置说明
 
@@ -200,36 +218,70 @@ english_learning_assistant/
 
 ## 🔧 常见问题
 
-**Q: 启动时提示缺少模型文件?**  
+**Q: 启动时提示缺少模型文件？**
 A: 请先运行 `python scripts/download_models.py` 下载模型
 
-**Q: Mac 上 LLM 运行很慢?**  
-A: 确保安装了 Metal 支持版本的 llama-cpp-python,启动脚本会自动配置
+**Q: Mac 上 LLM 运行很慢？**
+A: 确保安装了 Metal 加速版本的 llama-cpp-python：
 
-**Q: 如何更换 LLM 模型?**  
+```bash
+CMAKE_ARGS="-DLLAMA_METAL=on" pip install --upgrade --force-reinstall llama-cpp-python --no-cache-dir
+```
+
+**Q: 如何更换 LLM 模型？**
 A: 修改 `scripts/download_models.py` 中的 `LLM_REPO_ID` 和相关参数
 
-**Q: TTS 不工作?**  
-A: 应用默认使用 Edge-TTS,无需额外配置。如需使用 XTTS-v2,需在 download 脚本中启用下载
+**Q: TTS 不工作？**
+A: 应用默认使用 Edge-TTS，无需额外配置。如需使用 XTTS-v2，需在 download 脚本中启用下载
+
+**Q: 前端开发服务器无法访问后端 API？**
+A: 确保后端服务器在 8000 端口运行，Vite 配置了自动代理 `/api` 和 `/static` 路径
+
+**Q: 生产部署时前端页面无法加载？**
+A: 确保运行了 `cd frontend && npm run build`，并将 `frontend/dist/*` 复制到 `app/static/`
 
 ## 📝 开发说明
 
-### 启动开发服务器
+### 后端开发
 
 ```bash
-# 仅启动服务器(不安装依赖)
+# 启动后端开发服务器（支持热重载）
+uvicorn app.main:app --reload --port 8000
+
+# 或直接运行
 python -m app.main
 ```
 
-### 修改端口
+### 前端开发
 
-编辑 `app/main.py` 中的 `uvicorn.run()` 参数
+```bash
+cd frontend
+
+# 启动开发服务器（支持热重载）
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 预览生产构建
+npm run preview
+
+# 代码检查
+npm run lint
+```
+
+### 修改配置
+
+- **后端端口**：编辑 `app/main.py` 中的 `uvicorn.run()` 参数
+- **前端代理**：编辑 `frontend/vite.config.ts` 中的 `proxy` 配置
+- **模型路径**：编辑 `app/core/config.py` 中的相关配置
 
 ### 添加新功能
 
-1. API 端点: 在 `app/api/endpoints.py` 中添加
-2. 服务逻辑: 在 `app/services/` 中创建新服务
-3. 前端界面: 修改 `app/static/` 中的文件
+1. **后端 API**：在 `app/api/endpoints.py` 中添加新的路由
+2. **业务逻辑**：在 `app/services/` 中创建新的服务模块
+3. **前端组件**：在 `frontend/src/` 中创建新的 React 组件
+4. **API 调用**：在 `frontend/src/api.ts` 中添加 API 客户端方法
 
 ## 📄 许可证
 
@@ -242,4 +294,3 @@ python -m app.main
 ---
 
 **Enjoy Learning English! 🎉**
-# AI-Learn-English

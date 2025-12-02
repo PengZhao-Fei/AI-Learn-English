@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+requests
+beautifulsoup4
+llama-cpp-python
+edge-tts
+torch
+torchaudio
+pydantic
+pydantic-settings
+TTS==0.21.4
