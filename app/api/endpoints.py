@@ -1,10 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+import io
+import sqlite3
 from typing import List, Optional
+
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from app.models.database import get_db_connection
 from app.services.llm_service import llm_service
 from app.services.tts_service import tts_service
-from app.models.database import get_db_connection
-import sqlite3
 
 router = APIRouter()
 
@@ -18,9 +22,15 @@ class ChatResponse(BaseModel):
 
 class TTSRequest(BaseModel):
     text: str
+    language: Optional[str] = None
+    voice: Optional[str] = None
 
-class TTSResponse(BaseModel):
-    audio_url: str
+class TTSVoice(BaseModel):
+    key: str
+    language: str
+    name: str
+    quality: str
+    description: str
 
 class CourseCreate(BaseModel):
     title: str
@@ -43,12 +53,33 @@ async def chat(request: ChatRequest):
     response = llm_service.chat(request.message, system_prompt)
     return {"response": response}
 
-@router.post("/tts", response_model=TTSResponse)
+@router.get("/tts/voices", response_model=List[TTSVoice])
+async def list_tts_voices():
+    """列出已下载并可用的语音模型，便于前端按语言选择。"""
+    return tts_service.list_voices()
+
+@router.post("/tts")
 async def generate_speech(request: TTSRequest):
-    audio_url = tts_service.generate_audio(request.text)
-    if not audio_url:
+    audio_bytes, voice = tts_service.generate_audio(
+        request.text, language=request.language, voice_key=request.voice
+    )
+    if not audio_bytes or not voice:
         raise HTTPException(status_code=500, detail="Audio generation failed")
-    return {"audio_url": audio_url}
+    def _ascii(value: str) -> str:
+        return value.encode("ascii", "ignore").decode("ascii")
+
+    headers = {
+        "X-Voice-Key": voice.key,
+        "X-Voice-Language": voice.language,
+        "X-Voice-Name": _ascii(voice.name),
+        "X-Voice-Quality": voice.quality,
+    }
+    return StreamingResponse(
+        io.BytesIO(audio_bytes),
+        media_type="audio/wav",
+        headers=headers,
+        status_code=200,
+    )
 
 @router.get("/courses")
 async def get_courses():

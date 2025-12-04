@@ -10,24 +10,3 @@ const api = axios.create({
 })
 
 export default api
-
-export const resolveAssetUrl = (path: string | undefined | null) => {
-  if (!path) {
-    return ''
-  }
-  if (/^https?:\/\//i.test(path)) {
-    return path
-  }
-  if (API_BASE_URL.startsWith('http')) {
-    try {
-      const base = new URL(API_BASE_URL)
-      return `${base.origin}${path}`
-    } catch {
-      return path
-    }
-  }
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}${path}`
-  }
-  return path
-}

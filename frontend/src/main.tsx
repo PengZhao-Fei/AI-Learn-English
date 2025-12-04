@@ -1,11 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import 'antd/dist/reset.css'
-import './index.css'
+import { HeroUIProvider } from '@heroui/react'
 import App from './App.tsx'
+import './index.css'
 
+// Render the application with HeroUI Provider
+// 使用 HeroUI Provider 渲染应用
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <HeroUIProvider>
+      <App />
+    </HeroUIProvider>
   </StrictMode>,
 )
