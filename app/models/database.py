@@ -17,6 +17,9 @@ def init_db():
         title TEXT NOT NULL,
         description TEXT,
         source_url TEXT,
+        level TEXT,
+        focus TEXT,
+        audience TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
@@ -46,4 +49,66 @@ def init_db():
     ''')
     
     conn.commit()
+    
+    # Simple migration for new columns
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN level TEXT")
+    except sqlite3.OperationalError:
+        pass # Column likely exists
+        
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN focus TEXT")
+    except sqlite3.OperationalError:
+        pass
+        
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN audience TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # New columns for Redesign
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN target_skills TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN learning_style TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN duration TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE courses ADD COLUMN tone TEXT")
+    except sqlite3.OperationalError:
+        pass
+    
+    # AI Provider 配置表 | AI Provider Config Table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS ai_config (
+        id INTEGER PRIMARY KEY,
+        provider TEXT NOT NULL DEFAULT 'local',
+        api_key TEXT,
+        base_url TEXT,
+        model_name TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
+    # 插入默认 Kimi K2 配置（如果不存在）
+    # Insert default Kimi K2 config if not exists
+    existing = cursor.execute("SELECT id FROM ai_config WHERE id = 1").fetchone()
+    if not existing:
+        cursor.execute("""
+            INSERT INTO ai_config (id, provider, api_key, base_url, model_name)
+            VALUES (1, 'kimi', 'sk-iYgh8ZHe3Wm4JAZCJnqGWtiRqtdflgDt7kbgcDyG4uxPJVvK', 
+                    'https://api.moonshot.cn/v1', 'moonshot-v1-8k')
+        """)
+        
+    conn.commit()
     conn.close()
+

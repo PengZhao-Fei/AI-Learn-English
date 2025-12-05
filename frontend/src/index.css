@@ -1,25 +1,121 @@
-:root {
-  font-family: 'Inter', 'PingFang SC', 'Microsoft Yahei', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #0f172a;
-  background-color: #f0f2f5;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+/* Tailwind CSS base styles | Tailwind CSS 基础样式 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide global scrollbar | 隐藏全局滚动条 */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Custom scrollbar styles (for elements that need visible scrollbar) | 自定义滚动条样式 */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Dark mode scrollbar | 深色模式滚动条 */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Global body styles | 全局 body 样式 */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
+/* Animation keyframes for typing indicator | 打字指示器动画关键帧 */
+@keyframes bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background-color: #f0f2f5;
+.animate-bounce-delay-75 {
+  animation: bounce 0.6s infinite;
+  animation-delay: 75ms;
 }
 
-#root {
-  min-height: 100vh;
+.animate-bounce-delay-150 {
+  animation: bounce 0.6s infinite;
+  animation-delay: 150ms;
+}
+
+/* Resize handle styles | 调节宽度手柄样式 */
+.resize-handle {
+  position: absolute;
+  left: 0;
+  top: 48px; /* Start below header | 从头部下方开始 */
+  bottom: 100px; /* End above input area | 在输入区域上方结束 */
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: hsl(var(--heroui-primary));
+}
+
+/* Remove focus ring from HeroUI inputs | 移除 HeroUI 输入框的聚焦边框 */
+[data-slot="input-wrapper"]:focus-within,
+[data-slot="inner-wrapper"]:focus-within,
+.group[data-focus="true"] [data-slot="input-wrapper"],
+[data-focus-visible="true"] {
+  outline: none !important;
+  box-shadow: none !important;
+  ring: none !important;
+}
+
+/* Override HeroUI Textarea focus styles | 覆盖 HeroUI Textarea 聚焦样式 */
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Disable textarea resize grip | 禁用 textarea 调整大小图标 */
+textarea {
+  resize: none !important;
+}
+
+[data-slot="input-wrapper"] {
+  --tw-ring-shadow: none !important;
+  --tw-ring-offset-shadow: none !important;
 }

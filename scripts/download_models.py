@@ -1,12 +1,14 @@
 import os
 import sys
-from huggingface_hub import hf_hub_download, snapshot_download
+from huggingface_hub import hf_hub_download
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # Configuration
-MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "models")
+MODEL_DIR = os.path.join(PROJECT_ROOT, "data", "models")
 LLM_REPO_ID = "Qwen/Qwen2.5-7B-Instruct-GGUF"
-LLM_FILENAME = "qwen2.5-7b-instruct-q4_k_m.gguf"
-TTS_REPO_ID = "coqui/XTTS-v2"
 
 def download_llm():
     print(f"Checking LLM in repo: {LLM_REPO_ID}...")
@@ -76,22 +78,24 @@ def download_llm():
         print(f"Error downloading LLM: {e}")
 
 def download_tts():
-    print(f"Downloading TTS: {TTS_REPO_ID}...")
-    os.makedirs(os.path.join(MODEL_DIR, "tts"), exist_ok=True)
+    print("Ensuring Piper TTS voices are downloaded...")
     try:
-        path = snapshot_download(
-            repo_id=TTS_REPO_ID,
-            local_dir=os.path.join(MODEL_DIR, "tts"),
-            local_dir_use_symlinks=False,
-            allow_patterns=["*.json", "*.pth", "*.bin", "vocab.json"] # Download only necessary files
-        )
-        print(f"TTS downloaded to: {path}")
+        from app.services.tts_service import tts_service
+
+        voices = tts_service.list_voices()
+        if not voices:
+            print("No Piper voices detected. Please check your internet connection.")
+            return
+
+        tts_dir = os.path.join(MODEL_DIR, "tts")
+        print(f"Voices are cached under: {tts_dir}")
+        for voice in voices:
+            print(f"- {voice['name']} ({voice['language']}, {voice['quality']}) ready.")
     except Exception as e:
-        print(f"Error downloading TTS: {e}")
+        print(f"Error preparing TTS voices: {e}")
 
 if __name__ == "__main__":
     print("Starting model downloads... This may take a while.")
     download_llm()
-    # Note: XTTS download is large and we are using Edge-TTS as default now for stability.
     download_tts()
     print("Download complete.")
