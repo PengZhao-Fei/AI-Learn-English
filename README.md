@@ -6,15 +6,37 @@ An AI-powered English learning assistant that integrates Large Language Models (
 
 ## ✨ 主要功能 | Features
 
-- **AI 智能辅导 | AI Tutoring**：使用 Qwen2.5-7B 大语言模型回答英语学习问题
-- **文本转语音 | Text-to-Speech**：内置多款 Piper 英语音色，离线朗读课程或句子，支持中英文智能识别
-- **课程管理 | Course Management**：创建和管理英语学习课程
+- **AI 智能辅导 | AI Tutoring**：支持多种 LLM 提供商（本地 llama.cpp、DeepSeek、Qwen、Kimi、自定义端点），可在设置面板一键切换
+- **多智能体课程专家 | Multi-Agent Course Expert**：内置课程专家（Curriculum Designer → Content Writer → QC Reviewer）链路，几分钟内生成完整的双语课程
+- **文本转语音 | Text-to-Speech**：离线 Piper 语音 + 在线 Edge TTS + 浏览器原生 TTS，支持语速 0.25x-2x、语种自动识别、词句朗读
+- **课程管理 | Course Management**：创建/删除课程、实时查看 AI 生成内容、支持 SSE 流式写入
+- **AI 课程生成器 | Course Generator**：提供快速模式与「向导模式」两种操作体验，支持课程级别、技能焦点、学习风格、语气等可视化配置
 - **内容导入 | Content Import**：从 URL 导入网页内容作为学习材料
-- **现代化界面 | Modern UI**：基于 React + HeroUI + Tailwind CSS 的响应式三栏布局界面
-- **右键菜单 | Context Menu**：选中文本右键可朗读或询问 AI
-- **可调节面板 | Resizable Panels**：AI 对话面板宽度可拖拽调节
+- **现代化界面 | Modern UI**：React 19 + HeroUI + Tailwind CSS 三栏布局，支持互动文本高亮、即时右键菜单、面板拖拽
+- **右键菜单 | Context Menu**：选中文本右键可朗读或询问 AI，并可一键把句子发送到聊天输入框
+- **可调节面板 | Resizable Panels**：AI 对话面板宽度可拖拽调节，聊天面板支持流式响应、自动滚动
 
 ## 📅 更新日志 | Changelog
+
+### 2024-12-09: Course Expert & Provider Settings | 课程专家 + 多模型设置
+
+**What's New | 本次更新：**
+
+1. **Multi-Agent Course Expert | 多智能体课程专家**
+   - 新增 `app/services/course_expert.py`，通过「大纲设计师 → 内容撰写师 → 质检专家」链路一次性生成完整课程
+   - 前端新增 Course Generator & Course Generator Wizard，可配置 CEFR、受众、技能、学习风格、语气、课时数
+2. **AI Provider Center | AI 提供商中心**
+   - 新增 `app/services/llm_provider.py` + `/api/ai-provider/*` REST 接口，支持 Local / DeepSeek / Qwen / Kimi / Custom
+   - 设置弹窗内新增「AI 模型」页签，可直接填入 API Key、Base URL、模型名称并测试连通性
+3. **Edge & Browser Voices | Edge 与浏览器语音**
+   - TTS 服务支持 Edge TTS 语音（Aria/Guy/Jenny 等）与浏览器语音，新增 `speed` 参数控制语速
+   - UI 中可选择 Piper/Edge/Browser 语音，并提供 0.25x-2.0x 的语速按钮
+4. **Real-time Lesson Builder | 流式课时生成**
+   - 新增 `/api/courses/{course_id}/lessons/{lesson_id}/generate/stream` SSE 接口，前端实时展现 AI 写作进度
+   - 课程内容区支持 Markdown 渲染、`<en>/<cn>` 标签分色展示、点击单词朗读、点击句子朗读/追问
+5. **Database & API Enhancements | 数据库与 API**
+   - `courses` 表新增 level/focus/audience/target_skills/learning_style/duration/tone 字段，保留课程元信息
+   - 新增 `/api/courses/generate/full`（完整课程）、`/api/courses/generate/stream`（SSE 大纲）、`DELETE /api/courses/{id}` 等端点
 
 ### 2024-12-04: HeroUI Migration | HeroUI 迁移
 
@@ -84,6 +106,8 @@ pip install -r requirements.txt
 CMAKE_ARGS="-DLLAMA_METAL=on" pip install --upgrade --force-reinstall llama-cpp-python --no-cache-dir
 ```
 
+> ℹ️ `requirements.txt` 现已包含 `edge-tts`（在线语音）与 `langchain(+community)`（多智能体/流式工具链），首次安装会额外下载依赖，请保持网络畅通。
+
 #### 2. 下载模型文件 | Download Models
 
 ```bash
@@ -104,6 +128,8 @@ cd frontend
 npm install
 ```
 
+> 如果之前安装过依赖，请重新执行一次 `npm install` 以拉取 `react-markdown`、`remark-gfm`、`rehype-raw` 等新组件。
+
 #### 4. 启动应用 | Start Application
 
 **开发模式 | Development Mode**（推荐）：
@@ -121,7 +147,7 @@ npm run dev
 
 访问地址 | Access URLs：
 
-- 前端界面 | Frontend：http://localhost:5173
+- 前端界面 | Frontend：http://localhost:5174
 - 后端 API | Backend API：http://localhost:8000
 - API 文档 | API Docs：http://localhost:8000/docs
 
@@ -147,51 +173,69 @@ python -m app.main
 ### Web 界面 | Web Interface
 
 1. **添加演示课程**: 点击侧边栏的"Add Demo Course"按钮创建示例课程
-2. **导入网页内容**: 在输入框中粘贴 URL,点击"Import"导入外部内容
-3. **选择课程**: 从侧边栏选择课程查看内容
-4. **AI 对话**: 在右侧聊天面板向 AI 提问
-5. **文本朗读**:
-   - 单击单词：朗读该单词
-   - 双击单词：朗读并追问 AI
-   - 选中文本右键：显示朗读/询问 AI 菜单
+2. **导入/生成课程**: 输入 URL 点击 "Import"，或点击「AI 课程生成器」弹出快速/向导模式，基于主题和学习参数生成全新课程
+3. **选择课程**: 从侧边栏选择课程查看内容，可随时删除课程或触发课时生成
+4. **AI 对话**: 在右侧聊天面板向 AI 提问，右键选中文本可一键将句子注入聊天输入框
+5. **交互式朗读**:
+   - 点击单词：以指定语速播放，并高亮该词
+   - 点击句子：清除角色前缀后播放整句，可在设置里调整语速/语音
+   - 选中文本右键：显示「朗读 / 询问 AI / 填充聊天输入框」菜单
+6. **流式写作**：Lesson Content 区点击「生成课程内容」即调用 `/generate/stream` SSE，实时看到 AI 输出
+
+### AI 课程专家 | AI Course Expert
+
+- **快速生成**：点击侧边栏顶部的「AI 课程生成器」，输入主题+受众+技能焦点，一键调用 `/api/courses/generate/full`，数十秒内生成包含所有课时的完整课程
+- **向导模式**：切换到「Course Generator Wizard」可按步骤选择 CEFR 等级、目标技能、学习风格、课时时长/语气等参数，底层由 `CourseExpert` 多智能体串联完成
+- **课程信息落库**：生成后的 level/focus/audience/target_skills/learning_style/duration/tone 将同步写入 `courses` 表，便于后续检索或过滤
+
+### AI 提供商与语音设置 | AI Provider & Speech Settings
+
+- 打开设置弹窗（右上角 ⚙️），切换到「AI 模型」页签，即可在 Local/DeepSeek/Qwen/Kimi/Custom 之间切换，支持设置 API Key、Base URL、模型名称并立即测试连通性
+- 「语音设置」页签展示 Piper/Edge/浏览器语音的统一列表，支持 0.25x-2.0x 语速按钮与自动语言检测
+- TTS API 新增 `speed` 字段（默认为 1.0，即正常语速）；Piper 通过 `length_scale` 控制时长，Edge TTS 自动换算为微软的 `rate` 百分比
+
+### 流式课时生成 | Streaming Lessons
+
+- 点击任课时中的「生成课程内容」会触发 `/api/courses/{course_id}/lessons/{lesson_id}/generate/stream`，前端通过 `ReadableStream` 实时解析 JSON chunk
+- 每个 chunk 会立即渲染到 Lesson Content 面板，生成完成后会自动写入数据库
+- 可使用 `curl -N http://localhost:8000/api/courses/1/lessons/2/generate/stream` 手动订阅事件流，Headers 中 `event: status/result/done` 表示阶段信息
 
 ### API 接口 | API Endpoints
 
-主要 API 端点：
+**Chat & Speech**
 
-- **`POST /api/chat`** - 与 AI 对话
-
-  ```json
-  {
-    "message": "What is the difference between 'affect' and 'effect'?",
-    "context": "optional context"
-  }
-  ```
-
-- **`GET /api/tts/voices`** - 查询已缓存的 Piper 英语语音（音色、质量、描述）
-- **`POST /api/tts`** - 文本转语音，返回 `audio/wav` 流，可指定语音键或保持自动
+- `POST /api/chat`：与当前配置的 LLM 对话，可传 `context` 作为额外提示
+- `GET /api/tts/voices`：列出 Piper + Edge 语音
+- `POST /api/tts`：文本转语音，支持 `voice`（可为空表示自动）与 `speed`（0.25~2.0）
 
   ```bash
   curl -X POST http://localhost:8000/api/tts \
     -H "Content-Type: application/json" \
-    -d '{"text":"Hello there!","voice":"en_us_ryan_high"}' \
+    -d '{"text":"Hello there!","voice":"en-US-AriaNeural","speed":0.8}' \
     --output hello.wav
   ```
 
-  响应头会携带 `X-Voice-Key` / `X-Voice-Name` 等语音信息，响应体为可直接播放的 WAV 二进制，前端以 `fetch`/`axios` 获取后生成 `Blob URL` 即可播放。
+**Courses & Lessons**
 
-- **`POST /api/courses/import`** - 导入课程
+- `GET /api/courses`、`GET /api/courses/{course_id}/lessons`：读取课程与课时
+- `POST /api/courses/import`：从 URL 导入内容
+- `DELETE /api/courses/{course_id}`：删除课程（级联删除课时）
+- `POST /api/courses/{course_id}/lessons/{lesson_id}/generate`：单次生成课时内容
+- `GET /api/courses/{course_id}/lessons/{lesson_id}/generate/stream`：以 SSE 流式生成课时，事件类型包含 `status/result/done`
 
-  ```json
-  {
-    "url": "https://example.com/article"
-  }
-  ```
+**Course Expert & Streaming**
 
-- **`GET /api/courses`** - 获取所有课程
-- **`GET /api/courses/{course_id}/lessons`** - 获取课程的课时列表
+- `POST /api/courses/generate`：根据主题生成大纲（仅创建空课时）
+- `GET /api/courses/generate/stream`：SSE 方式生成大纲 + 插入课程
+- `POST /api/courses/generate/full`：调用 `CourseExpert` 生成完整课程（含所有课时内容），可设置 level/focus/audience/target_skills/learning_style/duration/tone/num_lessons
 
-**完整 API 文档**：http://localhost:8000/docs
+**AI Provider Center**
+
+- `GET /api/ai-provider/config`：读取当前提供商配置及可选 provider 列表
+- `PUT /api/ai-provider/config`：更新 provider、API Key、Base URL、Model
+- `POST /api/ai-provider/test`：快速检测当前配置是否可访问
+
+> 完整交互式文档： http://localhost:8000/docs
 
 ### 导入产品叙事课程 | Import Product Storytelling Course
 
@@ -215,7 +259,9 @@ english_learning_assistant/
 │   ├── models/               # 数据模型 | Data models
 │   │   └── database.py       # SQLite 数据库模型 | DB models
 │   ├── services/             # 业务逻辑 | Business logic
-│   │   ├── llm_service.py    # LLM 服务 | LLM service
+│   │   ├── llm_provider.py   # LLM 提供商中心 | Provider hub
+│   │   ├── llm_service.py    # LLM 门面层 | LLM facade
+│   │   ├── course_expert.py  # 课程专家多智能体 | Course Expert agents
 │   │   ├── tts_service.py    # TTS 服务 | TTS service
 │   │   └── content_service.py # 内容抓取服务 | Content service
 │   ├── static/               # 前端构建产物 | Frontend build
@@ -224,9 +270,10 @@ english_learning_assistant/
 │   ├── src/                  # 源代码 | Source code
 │   │   ├── components/       # UI 组件 | UI components
 │   │   │   ├── layout/       # 布局组件 | Layout components
-│   │   │   └── features/     # 功能组件 | Feature components
+│   │   │   └── features/     # 功能组件 (AIProviderSettings / CourseGenerator / InteractiveText)
 │   │   ├── hooks/            # 自定义 Hooks | Custom hooks
 │   │   ├── types/            # 类型定义 | Type definitions
+│   │   ├── utils/            # Markdown & 格式工具 | Markdown helpers
 │   │   ├── App.tsx           # 主应用组件 | Main component
 │   │   └── api.ts            # API 客户端 | API client
 │   ├── tailwind.config.js    # Tailwind 配置 | Tailwind config
@@ -253,8 +300,10 @@ english_learning_assistant/
 - llama-cpp-python - LLM 推理引擎 | LLM inference
 - Qwen2.5-7B-Instruct GGUF - 大语言模型 | LLM
 - Piper TTS + Piper Voices - 离线 TTS | Offline TTS
+- Edge-TTS - 在线语音 | Cloud speech
 - SQLite3 - 数据库 | Database
 - BeautifulSoup4 - 网页抓取 | Web scraping
+- LangChain / langchain-community - 智能体链路 | Agent pipeline
 
 **前端 | Frontend**：
 
@@ -266,26 +315,23 @@ english_learning_assistant/
 - Axios - HTTP 客户端 | HTTP client
 - Lucide React - 图标库 | Icon library
 - Framer Motion - 动画库 | Animation
+- React Markdown + remark-gfm + rehype-raw - Markdown & `<en>/<cn>` 渲染
 
-## 🎙️ Piper 英语语音 | Piper TTS Voices
+## 🎙️ TTS 语音系统 | Speech System
 
-- 首次启动或运行 `python scripts/download_models.py` 时，会自动从 [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) 下载 6 个美式音色（Amy、Bryce、Danny、Joe、Kristin、Ryan），覆盖男女声与不同音色质量。
-- `POST /api/tts` 请求体可传 `voice` 键来选择具体音色；`language` 始终为 `en`，若传入其他值会自动回退为英语。
-- `GET /api/tts/voices` 用于前端渲染语音下拉框，`quality` 字段可帮助提示音色的清晰度（low/medium/high）。
-- 接口返回即时 `audio/wav` 流且不在磁盘落地文件，避免音频缓存越来越多。
-- 自定义音色：将 Piper `model.onnx` 与同名 `model.onnx.json` 放在 `data/models/tts/<voice_key>/`，并创建 `metadata.json`（UTF-8，`language` 需设置为 `en`）：
+### Piper 离线语音
 
-  ```json
-  {
-    "key": "en_us_alex_medium",
-    "language": "en",
-    "name": "Alex (US · Male)",
-    "quality": "medium",
-    "description": "中性美式男声"
-  }
-  ```
+- 首次启动或运行 `python scripts/download_models.py` 时，会自动从 [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices) 下载 6 个美式音色（Amy、Bryce、Danny、Joe、Kristin、Ryan），覆盖男女声与不同音色质量
+- `POST /api/tts` 请求体可传 `voice` 键来选择具体音色；`language` 默认为 `en`
+- `GET /api/tts/voices` 用于前端渲染语音下拉框，`quality` 字段可提示音色清晰度（low/medium/high）
+- 自定义音色：将 Piper `model.onnx` 与同名 `model.onnx.json` 放在 `data/models/tts/<voice_key>/`，并创建 `metadata.json`，重启后端即可自动扫描
 
-  重启后端即可被自动扫描并展示在 API/前端中。
+### Edge / 浏览器语音
+
+- `edge-tts` 现已作为默认依赖，可使用 `en-US-AriaNeural / Guy / Jenny` 等在线语音（需联网）
+- 设置面板会把 Piper、Edge 与浏览器语音统一展示，可视化切换
+- `speed` 参数范围 0.25~2.0：Piper 会映射到 `length_scale`，Edge 会自动换算为微软 API 的 `rate` 百分比，浏览器语音则直接控制 `SpeechSynthesisUtterance.rate`
+- 当前的 `GET /api/tts/voices` 会包含 `provider` 字段（`piper`/`edge`），前端可以据此显示来源
 
 ## ⚙️ 配置说明 | Configuration
 
@@ -295,6 +341,12 @@ english_learning_assistant/
 - `MODEL_DIR`: 模型文件目录 | Model directory
 - `DB_PATH`: 数据库文件路径 | Database path
 - `LLM_MODEL_PATH`: LLM 模型路径 | LLM model path
+
+### AI Provider 配置 | AI Provider Config
+
+- `ai_config` 表保存当前 Provider（local/deepseek/qwen/kimi/custom）、API Key、Base URL、模型名称
+- 默认会写入一条示例配置（Kimi K2），请在首次运行后通过设置面板或 `PUT /api/ai-provider/config` 替换为自己的 Key
+- `GET /api/ai-provider/config` 会返回掩码后的 Key 及可用 Provider 列表；`POST /api/ai-provider/test` 可即时校验连接情况
 
 ## 🔧 常见问题 | FAQ
 

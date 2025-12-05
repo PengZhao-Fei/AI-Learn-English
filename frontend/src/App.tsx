@@ -8,142 +8,218 @@ import CourseSidebar from "./components/features/CourseSidebar";
 import LessonContent from "./components/features/LessonContent";
 import AIChatPanel from "./components/features/AIChatPanel";
 import SettingsModal from "./components/features/SettingsModal";
+import CourseGeneratorWizard from "./components/features/CourseGeneratorWizard";
+import axios from "axios";
 
 // Hooks & Types
 import { useTTS, useAIChat, useVoices } from "./hooks";
 import type { OutlineTrack, LessonContent as LessonContentType } from "./types";
 
-// --- Mock Data (To be replaced with API calls if needed) ---
-const outlineData: OutlineTrack[] = [
-  {
-    id: 'presentation',
-    label: '商务表达力',
-    level: 'B2',
-    units: [
-      {
-        id: 'clarity',
-        title: 'Pitch：清晰呈现问题与方案',
-        duration: '12 分钟',
-        status: 'inProgress',
-        focus: 'Hook + Value',
-      },
-      {
-        id: 'storyline',
-        title: 'Story：用数据讲故事',
-        duration: '18 分钟',
-        status: 'notStarted',
-        focus: '结构化表达',
-      },
-    ],
-  },
-  {
-    id: 'conversation',
-    label: '情景对话',
-    level: 'B1',
-    units: [
-      {
-        id: 'escalation',
-        title: 'Stakeholder 更新',
-        duration: '10 分钟',
-        status: 'done',
-        focus: '语气控制',
-      },
-      {
-        id: 'negotiation',
-        title: '谈判：让步与共识',
-        duration: '15 分钟',
-        status: 'notStarted',
-        focus: '观点表达',
-      },
-    ],
-  },
-];
-
-const lessonLibrary: Record<string, LessonContentType> = {
-  clarity: {
-    id: 'clarity',
-    title: 'Pitch：清晰呈现问题与方案',
-    description: '练习如何在 60 秒内说明背景、问题与解决方案，帮助学习者掌控首轮问答的节奏。',
-    sections: [
-      {
-        id: 'hook',
-        title: 'Hook：引入背景',
-        objective: '建立共识、用数据吸引注意力',
-        sentences: [
-          {
-            id: 'hook-1',
-            text: 'Over the last quarter, onboarding completion dropped by 18%, costing us thousands of potential conversions.',
-            tip: '说明数据与影响力，让听众进入情境。',
-          },
-          {
-            id: 'hook-2',
-            text: 'Users mentioned that the flow feels lengthy and transactional instead of guided.',
-          },
-        ],
-      },
-      {
-        id: 'solution',
-        title: 'Solution：提出方案',
-        objective: '突出价值、解释关键动作',
-        sentences: [
-          {
-            id: 'solution-1',
-            text: 'We rebuilt the onboarding into three conversational checkpoints that adapt to each persona.',
-          },
-          {
-            id: 'solution-2',
-            text: 'Each checkpoint surfaces only the decision that matters, so learners never second guess what comes next.',
-            tip: '强调用户体验的收益。',
-          },
-        ],
-      },
-      {
-        id: 'impact',
-        title: 'Impact：强化亮点',
-        objective: '用证据证明方案有效',
-        sentences: [
-          {
-            id: 'impact-1',
-            text: 'In our pilot run, completion bounced back to 93% and generated 1.6x more qualified leads.',
-          },
-          {
-            id: 'impact-2',
-            text: 'The next sprint focuses on localization, so today I’d love your input on prioritizing regions.',
-          },
-        ],
-      },
-    ],
-  },
-  storyline: {
-    id: 'storyline',
-    title: 'Story：用数据讲故事',
-    description: '练习从使用者视角拆解痛点、铺垫冲突并提出证据。',
-    sections: [
-      {
-        id: 'story-1',
-        title: '场景设定',
-        objective: '让听众“看到”真实的使用场景',
-        sentences: [
-          {
-            id: 'story-1-1',
-            text: 'Imagine a parent who only has ten minutes between meetings to adjust their child’s study plan.',
-          },
-          {
-            id: 'story-1-2',
-            text: 'They open the dashboard and see a dense spreadsheet.',
-          },
-        ],
-      },
-    ],
-  },
-};
-
 export default function App() {
   // --- State ---
-  const [activeLessonId, setActiveLessonId] = useState('clarity');
+  const [activeLessonId, setActiveLessonId] = useState('');
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const [ttsRate, setTtsRate] = useState(1);
+  const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
+  const [courseData, setCourseData] = useState<OutlineTrack[]>([]);
+  const [dynamicLessonLibrary, setDynamicLessonLibrary] = useState<Record<string, LessonContentType>>({});
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [pendingChatInput, setPendingChatInput] = useState<string>("");  // 待填充的输入内容
+  
+  // Fetch courses from API
+  const fetchCourses = async () => {
+    try {
+      const res = await axios.get("/api/courses");
+      const courses = res.data.courses;
+      
+      // Transform to OutlineTrack format
+      // Note: This is a simplified fetch. Ideally we fetch lessons for each course.
+      // For now, let's assume we load lessons when needed or fetch all.
+      // Let's fetch lessons for each course to build the tree.
+      
+      const newTracks: OutlineTrack[] = [];
+      
+      for (const course of courses) {
+        const lessonsRes = await axios.get(`/api/courses/${course.id}/lessons`);
+        const lessons = lessonsRes.data.lessons;
+        
+        newTracks.push({
+          id: `course-${course.id}`,
+          label: course.title.replace("Course: ", ""),
+          level: 'Custom',
+          units: lessons.map((l: any) => ({
+            id: `lesson-${l.id}`,
+            title: l.title,
+            duration: '10 min', // Mock
+            status: l.content ? 'done' : 'notStarted',
+            focus: 'AI Generated'
+          }))
+        });
+      }
+      
+      // Set courseData from API only
+      setCourseData(newTracks);
+      
+      // Auto-select first lesson if none selected
+      if (newTracks.length > 0 && newTracks[0].units.length > 0) {
+        setActiveLessonId(prev => prev || newTracks[0].units[0].id);
+      }
+      
+      // Also populate dynamicLessonLibrary with existing content
+      const newLibrary: Record<string, LessonContentType> = {};
+      for (const course of courses) {
+        const lessonsRes = await axios.get(`/api/courses/${course.id}/lessons`);
+        for (const l of lessonsRes.data.lessons) {
+          if (l.content) {
+             // Parse content if possible, or wrap in single section
+             // For now, simple wrap
+             newLibrary[`lesson-${l.id}`] = {
+               id: `lesson-${l.id}`,
+               title: l.title,
+               description: "AI Generated Lesson",
+               sections: [{
+                 id: `section-${l.id}`,
+                 title: "Lesson Content",
+                 objective: "Learn via AI generated content",
+                 sentences: l.content.split('\n').filter((s: string) => s.trim().length > 0).map((s: string, idx: number) => ({
+                   id: `s-${l.id}-${idx}`,
+                   text: s
+                 }))
+               }]
+             };
+          } else {
+             // Empty content placeholder
+             newLibrary[`lesson-${l.id}`] = {
+               id: `lesson-${l.id}`,
+               title: l.title,
+               description: "Content waiting to be generated",
+               sections: []
+             };
+          }
+        }
+      }
+      setDynamicLessonLibrary(prev => ({...prev, ...newLibrary}));
+      
+    } catch (err) {
+      console.error("Failed to fetch courses:", err);
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    if (!activeLessonId.startsWith('lesson-')) return;
+    
+    setIsGeneratingContent(true);
+    try {
+      // Extract IDs
+      // activeLessonId format: lesson-{id}
+      // We need courseId too. It's not directly available in ID.
+      // But we can find it from courseData.
+      let courseId = -1;
+      let lessonId = parseInt(activeLessonId.replace('lesson-', ''));
+      
+      for (const track of courseData) {
+        if (track.units.find(u => u.id === activeLessonId)) {
+          courseId = parseInt(track.id.replace('course-', ''));
+          break;
+        }
+      }
+      
+      if (courseId === -1) throw new Error("Course not found");
+      
+      // Use fetch for streaming response
+      const response = await fetch(`/api/courses/${courseId}/lessons/${lessonId}/generate/stream`);
+      if (!response.body) throw new Error("No response body");
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.replace('data: ', '');
+            if (dataStr === 'done') break;
+            
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.chunk) {
+                fullContent += data.chunk;
+                
+                // Update library incrementally
+                setDynamicLessonLibrary(prev => ({
+                  ...prev,
+                  [activeLessonId]: {
+                    id: activeLessonId,
+                    title: prev[activeLessonId]?.title || "Lesson",
+                    description: "AI Generated Lesson",
+                    sections: [{
+                      id: `section-${lessonId}`,
+                      title: "Lesson Content",
+                      objective: "Learn via AI generated content",
+                      sentences: fullContent.split('\n').filter((s: string) => s.trim().length > 0).map((s: string, idx: number) => ({
+                        id: `s-${lessonId}-${idx}`,
+                        text: s
+                      }))
+                    }]
+                  }
+                }));
+              }
+            } catch (e) {
+              // Ignore parse errors for partial chunks
+            }
+          }
+        }
+      }
+      
+    } catch (err) {
+      console.error("Failed to generate content:", err);
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const handleCourseGenerated = (courseId: number) => {
+    console.log("Course generated:", courseId);
+    fetchCourses();
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!confirm("确定要删除这个课程吗？删除后无法恢复。")) return;
+    
+    try {
+      await axios.delete(`/api/courses/${courseId}`);
+      
+      // If active lesson belongs to this course, clear it
+      // Simple check: if activeLessonId starts with a lesson ID that might be in this course?
+      // Better: just refresh courses. If active lesson is gone, handle it.
+      
+      // Refresh list
+      await fetchCourses();
+      
+      // Check if active lesson still exists in new data (we need to wait for fetchCourses to update state? 
+      // fetchCourses updates state async. We can check the response there or just clear if we know.)
+      // For simplicity, let's just clear active lesson if it was part of the deleted course.
+      // But we don't easily know which course the active lesson belongs to without searching.
+      // Let's just reset to first available if current one is invalid?
+      // Actually fetchCourses handles "Auto-select first lesson if none selected" but only if activeLessonId is empty?
+      // Let's just let the user select a new one or auto-select in useEffect if current becomes invalid.
+      
+    } catch (err) {
+      console.error("Failed to delete course:", err);
+      alert("删除失败，请重试");
+    }
+  };
   
   // Settings Modal
   const { isOpen: isSettingsOpen, onOpen: onOpenSettings, onClose: onCloseSettings } = useDisclosure();
@@ -177,8 +253,13 @@ export default function App() {
 
   // --- Derived Data ---
   const activeLesson = useMemo(() => 
-    lessonLibrary[activeLessonId] ?? lessonLibrary.clarity, 
-    [activeLessonId]
+    dynamicLessonLibrary[activeLessonId] ?? {
+      id: 'empty',
+      title: activeLessonId ? 'Loading...' : 'Please select a lesson',
+      description: 'From the left sidebar, select a lesson to start, or click + to generate a new course.',
+      sections: []
+    }, 
+    [activeLessonId, dynamicLessonLibrary]
   );
 
   // --- Handlers ---
@@ -198,9 +279,9 @@ export default function App() {
   };
 
   const handleSentenceAsk = (sentence: string) => {
-    const question = `请帮我分析这句话的语法结构和语气，并给我一个改写建议：${sentence}`;
-    sendMessage(question, sentence);
-    speakSentence(sentence);
+    // 填充到输入框，不直接发送 | Fill input box, don't send directly
+    const question = `${sentence}，这句话是什么意思你来解释一下`;
+    setPendingChatInput(question);
     setShowRightSidebar(true);
   };
 
@@ -234,22 +315,25 @@ export default function App() {
         
         sidebar={
           <CourseSidebar 
-            data={outlineData}
+            data={courseData}
             activeLessonId={activeLessonId}
             onSelectLesson={setActiveLessonId}
+            onDeleteCourse={handleDeleteCourse}
             onClose={() => setShowLeftSidebar(false)}
+            onOpenGenerator={() => setIsGeneratorOpen(true)}
           />
         }
         
         content={
           <LessonContent 
             content={activeLesson}
-            isLoading={false}
+            isLoading={isGeneratingContent}
             highlightedText={highlightedText}
             onWordClick={speakWord}
             onWordDoubleClick={handleWordDoubleClick}
             onSentenceSpeak={speakSentence}
             onSentenceAsk={handleSentenceAsk}
+            onGenerate={handleGenerateContent}
           />
         }
         
@@ -259,6 +343,8 @@ export default function App() {
             isLoading={isChatLoading}
             onSendMessage={sendMessage}
             onClose={() => setShowRightSidebar(false)}
+            pendingInput={pendingChatInput}
+            onPendingInputConsumed={() => setPendingChatInput("")}
           />
         }
       />
@@ -271,6 +357,12 @@ export default function App() {
         onVoiceChange={handleVoiceChange}
         ttsRate={ttsRate}
         onRateChange={handleRateChange}
+      />
+      
+      <CourseGeneratorWizard 
+        isOpen={isGeneratorOpen}
+        onClose={() => setIsGeneratorOpen(false)}
+        onCourseGenerated={handleCourseGenerated}
       />
     </div>
   );

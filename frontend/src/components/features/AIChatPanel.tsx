@@ -8,13 +8,17 @@ interface AIChatPanelProps {
   isLoading: boolean;
   onSendMessage: (text: string) => void;
   onClose?: () => void;
+  pendingInput?: string;  // 待填充的输入内容 | Pending input to fill
+  onPendingInputConsumed?: () => void;  // 消费后回调 | Callback after consuming
 }
 
 export default function AIChatPanel({ 
   messages, 
   isLoading, 
   onSendMessage,
-  onClose 
+  onClose,
+  pendingInput,
+  onPendingInputConsumed
 }: AIChatPanelProps) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -23,6 +27,14 @@ export default function AIChatPanel({
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // Fill input from pending | 从 pending 填充输入框
+  useEffect(() => {
+    if (pendingInput) {
+      setInput(pendingInput);
+      onPendingInputConsumed?.();
+    }
+  }, [pendingInput, onPendingInputConsumed]);
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -160,7 +172,9 @@ export default function AIChatPanel({
               maxRows={4}
               classNames={{
                 input: "text-sm py-3 px-1",
-                inputWrapper: "bg-transparent shadow-none border-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent min-h-0"
+                inputWrapper: "bg-transparent shadow-none border-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent min-h-0 !ring-0 !ring-offset-0",
+                innerWrapper: "!ring-0",
+                base: "!ring-0"
               }}
             />
             
@@ -182,11 +196,10 @@ export default function AIChatPanel({
                 <Button 
                   isIconOnly
                   size="sm"
-                  color={input.trim() ? "primary" : "default"}
-                  variant={input.trim() ? "solid" : "light"}
+                  variant="light"
                   isDisabled={!input.trim() || isLoading}
                   onPress={handleSend}
-                  className="w-8 h-8"
+                  className={`w-8 h-8 ${input.trim() ? 'text-primary' : 'text-default-400'}`}
                 >
                   <Send size={16} />
                 </Button>

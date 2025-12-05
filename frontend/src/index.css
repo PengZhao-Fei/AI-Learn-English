@@ -79,8 +79,8 @@ body {
 .resize-handle {
   position: absolute;
   left: 0;
-  top: 0;
-  bottom: 0;
+  top: 48px; /* Start below header | 从头部下方开始 */
+  bottom: 100px; /* End above input area | 在输入区域上方结束 */
   width: 4px;
   cursor: col-resize;
   background: transparent;
@@ -91,4 +91,31 @@ body {
 .resize-handle:hover,
 .resize-handle:active {
   background: hsl(var(--heroui-primary));
+}
+
+/* Remove focus ring from HeroUI inputs | 移除 HeroUI 输入框的聚焦边框 */
+[data-slot="input-wrapper"]:focus-within,
+[data-slot="inner-wrapper"]:focus-within,
+.group[data-focus="true"] [data-slot="input-wrapper"],
+[data-focus-visible="true"] {
+  outline: none !important;
+  box-shadow: none !important;
+  ring: none !important;
+}
+
+/* Override HeroUI Textarea focus styles | 覆盖 HeroUI Textarea 聚焦样式 */
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Disable textarea resize grip | 禁用 textarea 调整大小图标 */
+textarea {
+  resize: none !important;
+}
+
+[data-slot="input-wrapper"] {
+  --tw-ring-shadow: none !important;
+  --tw-ring-offset-shadow: none !important;
 }
