@@ -17,8 +17,17 @@ except ImportError:  # pragma: no cover - missing optional dependency
 
 try:
     from piper import PiperVoice
+    from piper.config import SynthesisConfig
 except ImportError:  # pragma: no cover - missing optional dependency
     PiperVoice = None
+    SynthesisConfig = None
+
+try:
+    import edge_tts
+    import asyncio
+except ImportError:
+    edge_tts = None
+    asyncio = None
 
 
 @dataclass(frozen=True)
@@ -26,11 +35,12 @@ class VoiceSpec:
     key: str
     language: str
     name: str
-    repo_id: str
-    model_file: str
-    config_file: str
     quality: str
     description: str
+    provider: str = "piper"  # 'piper' or 'edge'
+    repo_id: Optional[str] = None
+    model_file: Optional[str] = None
+    config_file: Optional[str] = None
 
 
 @dataclass
@@ -40,8 +50,9 @@ class LocalVoice:
     name: str
     quality: str
     description: str
-    model_path: Path
-    config_path: Path
+    provider: str = "piper"
+    model_path: Optional[Path] = None
+    config_path: Optional[Path] = None
 
     def to_dict(self) -> Dict[str, str]:
         data = asdict(self)
@@ -111,6 +122,31 @@ DEFAULT_VOICES: List[VoiceSpec] = [
         quality="high",
         description="高质量美式男声，情感表达丰富。",
     ),
+    # --- Edge TTS Voices ---
+    VoiceSpec(
+        key="en-US-AriaNeural",
+        language="en",
+        name="Aria (Online · Female)",
+        provider="edge",
+        quality="high",
+        description="微软在线女声，发音标准清晰，适合单词朗读。",
+    ),
+    VoiceSpec(
+        key="en-US-GuyNeural",
+        language="en",
+        name="Guy (Online · Male)",
+        provider="edge",
+        quality="high",
+        description="微软在线男声，发音标准清晰。",
+    ),
+    VoiceSpec(
+        key="en-US-JennyNeural",
+        language="en",
+        name="Jenny (Online · Female)",
+        provider="edge",
+        quality="high",
+        description="微软在线女声，自然对话风格。",
+    ),
 ]
 
 LANGUAGE_HINTS = {
@@ -154,6 +190,8 @@ class TTSService:
 
         self._sync_default_models()
 
+        self._sync_default_models()
+
     # --- Public API -------------------------------------------------
 
     def list_voices(self) -> List[Dict[str, str]]:
@@ -166,15 +204,17 @@ class TTSService:
                 "name": v["name"],
                 "quality": v["quality"],
                 "description": v["description"],
+                "provider": v.get("provider", "piper"),
             }
             for v in sorted(voices, key=lambda item: item["language"])
         ]
 
-    def generate_audio(
+    async def generate_audio(
         self,
         text: str,
         language: Optional[str] = None,
         voice_key: Optional[str] = None,
+        speed: Optional[float] = None,
     ) -> Tuple[Optional[bytes], Optional[LocalVoice]]:
         clean_text = (text or "").strip()
         if not clean_text:
@@ -185,19 +225,89 @@ class TTSService:
             print("未检测到可用的本地语音模型。")
             return None, None
 
+        # Handle Edge TTS
+        if voice.provider == "edge":
+            return await self._generate_edge_audio(clean_text, voice, speed)
+
+        # Handle Piper TTS (Sync wrapped in thread if needed, but keeping simple for now)
+        # Since this is now an async method, we should ideally run blocking code in executor
+        # But for simplicity and backward compat logic, we'll keep it inline or wrap it.
+        # Given Piper is fast, inline might be okay, but let's be safe.
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._generate_piper_audio, clean_text, voice, speed)
+
+    def _generate_piper_audio(self, text: str, voice: LocalVoice, speed: Optional[float]) -> Tuple[Optional[bytes], Optional[LocalVoice]]:
         voice_instance = self._get_voice_instance(voice)
         voice_lock = self._get_voice_lock(voice.key)
         buffer = io.BytesIO()
 
         try:
+            # Piper length_scale: 1.0 is normal, > 1.0 is slower, < 1.0 is faster
+            # Default to 1.0 if not provided
+            length_scale = speed if speed is not None else 1.0
+            
+            # Create SynthesisConfig
+            config = SynthesisConfig(length_scale=length_scale)
+
             with voice_lock:
                 with wave.open(buffer, "wb") as wav_handle:
-                    voice_instance.synthesize_wav(clean_text, wav_handle)
+                    voice_instance.synthesize_wav(text, wav_handle, syn_config=config)
         except Exception as exc:
             print(f"生成音频时出错: {exc}")
             return None, None
 
         return buffer.getvalue(), voice
+
+    async def _generate_edge_audio(self, text: str, voice: LocalVoice, speed: Optional[float]) -> Tuple[Optional[bytes], Optional[LocalVoice]]:
+        if not edge_tts:
+            print("Edge TTS library not installed.")
+            return None, None
+            
+        try:
+            # Edge TTS rate: "+50%" or "-50%"
+            # speed 1.0 = +0%, 1.5 = -33% (slower), 0.5 = +100% (faster)
+            # Wait, user wants speed slider 0.5 (slow) to 2.0 (fast)? 
+            # Or 1.0 normal, 1.5 slow?
+            # In Piper logic: length_scale 1.5 = 1.5x duration = slower.
+            # So speed param here is actually "duration scale".
+            # Let's keep consistent: speed=1.5 means 1.5x longer (slower).
+            
+            rate_str = "+0%"
+            if speed is not None and speed != 1.0:
+                # Convert duration scale to rate percentage
+                # rate = speed / duration
+                # If duration is 1.5x, speed is 1/1.5 = 0.66x (-33%)
+                # If duration is 0.5x, speed is 1/0.5 = 2.0x (+100%)
+                
+                # Let's assume the UI slider sends "playback rate" (0.5x to 2.0x)
+                # But wait, previous task established:
+                # "Piper length_scale: 1.0 is normal, > 1.0 is slower"
+                # So the 'speed' param in backend is actually 'length_scale' (inverse speed).
+                # If UI sends 1.5 for slow, it means 1.5x length.
+                
+                # Edge TTS uses rate string like "+50%" (faster) or "-50%" (slower).
+                # If length_scale = 1.5 (slower), rate should be negative.
+                # rate_ratio = 1 / length_scale
+                # percentage = (rate_ratio - 1) * 100
+                
+                rate_ratio = 1.0 / speed
+                percentage = int((rate_ratio - 1.0) * 100)
+                sign = "+" if percentage >= 0 else ""
+                rate_str = f"{sign}{percentage}%"
+
+            communicate = edge_tts.Communicate(text, voice.key, rate=rate_str)
+            
+            # Stream to memory
+            audio_data = b""
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_data += chunk["data"]
+                    
+            return audio_data, voice
+            
+        except Exception as e:
+            print(f"Edge TTS generation failed: {e}")
+            return None, None
 
     # --- Internal helpers -------------------------------------------
 
@@ -207,6 +317,22 @@ class TTSService:
         self._refresh_voice_registry()
 
     def _ensure_voice_assets(self, spec: VoiceSpec):
+        if spec.provider == "edge":
+            # Edge voices don't need download, just register them
+            voice = LocalVoice(
+                key=spec.key,
+                language=spec.language,
+                name=spec.name,
+                quality=spec.quality,
+                description=spec.description,
+                provider="edge",
+                model_path=None,
+                config_path=None
+            )
+            with self._state_lock:
+                self._voice_registry[spec.key] = voice
+            return
+
         voice_dir = self.base_dir / spec.key
         model_path = voice_dir / "model.onnx"
         config_path = voice_dir / "config.json"
@@ -241,6 +367,8 @@ class TTSService:
 
     def _refresh_voice_registry(self):
         voices: Dict[str, LocalVoice] = {}
+        
+        # 1. Load local Piper voices from disk
         for entry in self.base_dir.iterdir():
             if not entry.is_dir():
                 continue
@@ -259,10 +387,25 @@ class TTSService:
                 name=metadata["name"],
                 quality=metadata["quality"],
                 description=metadata["description"],
+                provider="piper",
                 model_path=model_path,
                 config_path=config_path,
             )
             voices[voice.key] = voice
+
+        # 2. Add Edge TTS voices from DEFAULT_VOICES
+        for spec in DEFAULT_VOICES:
+            if spec.provider == "edge":
+                voices[spec.key] = LocalVoice(
+                    key=spec.key,
+                    language=spec.language,
+                    name=spec.name,
+                    quality=spec.quality,
+                    description=spec.description,
+                    provider="edge",
+                    model_path=None,
+                    config_path=None
+                )
 
         with self._state_lock:
             self._voice_registry = voices

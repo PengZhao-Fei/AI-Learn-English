@@ -6,6 +6,9 @@ requests
 beautifulsoup4
 llama-cpp-python
 piper-tts
+edge-tts
 huggingface_hub
 pydantic
 pydantic-settings
+langchain
+langchain-community

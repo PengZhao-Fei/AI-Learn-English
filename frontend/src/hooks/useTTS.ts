@@ -95,7 +95,7 @@ export function useTTS(options: UseTTSOptions) {
   // Speak text using TTS API or browser fallback
   // 使用 TTS API 或浏览器回退方案朗读文本
   const speak = useCallback(
-    async (text: string) => {
+    async (text: string, options: { speed?: number } = {}) => {
       if (!text.trim()) return
 
       const textIsChinese = isChinese(text)
@@ -111,10 +111,12 @@ export function useTTS(options: UseTTSOptions) {
           setIsGenerating(false)
           return
         }
-
         // For English text, try API first with user's selected voice
         // 对于英文文本，优先使用用户选择的语音调用 API
-        const payload: { text: string; language?: string; voice?: string } = { text }
+        const payload: { text: string; language?: string; voice?: string; speed?: number } = { 
+          text,
+          speed: options.speed 
+        }
         if (selectedVoiceKey !== 'auto' && selectedVoice) {
           payload.language = selectedVoice.language
           payload.voice = selectedVoice.key
@@ -171,7 +173,9 @@ export function useTTS(options: UseTTSOptions) {
       const cleanWord = word.replace(/[^a-zA-Z'-]/g, '')
       if (!cleanWord) return
       setHighlightedText(cleanWord)
-      speak(cleanWord)
+      // Use slower speed (1.5x length) for single words to improve clarity
+      // 单个单词使用慢速（1.5倍时长）以提高清晰度
+      speak(cleanWord, { speed: 1.5 })
     },
     [speak],
   )

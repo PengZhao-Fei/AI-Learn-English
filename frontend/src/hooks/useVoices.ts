@@ -38,6 +38,11 @@ export function useVoices() {
   // Fetch voices on mount | 组件挂载时获取语音
   useEffect(() => {
     fetchVoices()
+    
+    // Also trigger browser voice loading (sometimes needs a moment)
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis.getVoices()
+    }
   }, [fetchVoices])
 
   // Handle voice selection change | 处理语音选择变更
@@ -51,9 +56,24 @@ export function useVoices() {
   // Get currently selected voice object | 获取当前选中的语音对象
   const selectedVoice = voices.find((v) => v.key === selectedVoiceKey) ?? null
 
+  // Get browser voices
+  const getBrowserVoices = () => {
+    if (typeof window === 'undefined') return []
+    return window.speechSynthesis.getVoices()
+      .filter(v => v.lang.startsWith('en'))
+      .map(v => ({
+        value: `browser:${v.name}`,
+        label: `[Browser] ${v.name}`,
+        description: '浏览器本地语音',
+        isBrowser: true,
+        voiceObject: v
+      }))
+  }
+
   // Build voice options for select component | 构建语音选项用于下拉选择
   const voiceOptions = [
     { value: 'auto', label: '自动检测（根据文本自动匹配语音）' },
+    // Server voices
     ...[...voices]
       .sort((a, b) => {
         if (a.language === b.language) {
@@ -64,7 +84,10 @@ export function useVoices() {
       .map((voice) => ({
         value: voice.key,
         label: `${voice.name} · ${voice.language.toUpperCase()} · ${voice.quality}`,
+        description: voice.description
       })),
+    // Browser voices
+    ...getBrowserVoices()
   ]
 
   return {

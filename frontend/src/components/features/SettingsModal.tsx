@@ -1,6 +1,14 @@
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Select, SelectItem, Slider } from "@heroui/react";
-import { Mic, Bot, Volume2 } from "lucide-react";
+/**
+ * Settings Modal Component
+ * 设置弹窗组件
+ * 
+ * Contains TTS settings and AI provider settings.
+ * 包含 TTS 设置和 AI 提供商设置。
+ */
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Slider, Tabs, Tab, cn } from "@heroui/react";
+import { Mic, Volume2, Cpu, Check } from "lucide-react";
 import type { TTSVoice } from "../../types";
+import AIProviderSettings from "./AIProviderSettings";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -22,14 +30,45 @@ export default function SettingsModal({
   onRateChange
 }: SettingsModalProps) {
   
-  // Build voice options
+  // Build voice options | 构建语音选项
+  // Note: We use the voices passed from props, but we should also include browser voices if they are in the list
+  // Actually, SettingsModal receives `voices` which are only server voices.
+  // We need to use `useVoices` hook inside here or pass all options.
+  // But `SettingsModal` is a presentational component mostly.
+  // Let's assume the parent passes all options or we modify how options are built.
+  // Wait, `SettingsModal` builds `voiceOptions` locally from `voices` prop.
+  // We should probably accept `voiceOptions` as a prop instead of building it, 
+  // OR we should modify `SettingsModal` to accept browser voices too.
+  
+  // Let's modify `SettingsModal` to use `useVoices` hook directly or just accept the full options list?
+  // The prompt says "Update SettingsModal to use Slider...".
+  // The user also said "设置里的“语音模型”选项加上浏览器的TTS吧".
+  
+  // Let's modify `SettingsModal` to fetch browser voices directly for now to keep it simple,
+  // or better, let's update the `voices` prop type to include browser voices?
+  // `TTSVoice` type is strict.
+  
+  // Let's just fetch browser voices here to mix them in.
+  const getBrowserVoices = () => {
+    if (typeof window === 'undefined') return [];
+    return window.speechSynthesis.getVoices()
+      .filter(v => v.lang.startsWith('en'))
+      .map(v => ({
+        key: `browser:${v.name}`,
+        label: `[Browser] ${v.name}`,
+        description: '浏览器本地语音',
+        quality: 'local'
+      }));
+  };
+
   const voiceOptions = [
-    { key: 'auto', label: '自动检测 (Auto Detect)', description: '根据文本自动匹配语言' },
+    { key: 'auto', label: '自动检测', description: '根据文本自动匹配语言' },
     ...voices.map(v => ({
       key: v.key,
-      label: `${v.name} (${v.language.toUpperCase()})`,
-      description: v.description
-    }))
+      label: v.name,
+      description: `${v.language.toUpperCase()} · ${v.quality}`
+    })),
+    ...getBrowserVoices()
   ];
 
   return (
@@ -37,6 +76,8 @@ export default function SettingsModal({
       isOpen={isOpen} 
       onClose={onClose}
       backdrop="blur"
+      size="2xl"
+      scrollBehavior="inside"
       classNames={{
         base: "bg-background border border-default-100 shadow-xl",
       }}
@@ -47,68 +88,93 @@ export default function SettingsModal({
             <ModalHeader className="flex flex-col gap-1">
               AI 学习偏好设置
             </ModalHeader>
-            <ModalBody className="gap-6">
-              {/* Voice Selection */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Mic size={16} /> 语音模型
-                </label>
-                <Select 
-                  selectedKeys={[selectedVoiceKey]}
-                  onChange={(e) => onVoiceChange(e.target.value)}
-                  placeholder="选择语音"
-                  variant="bordered"
+            <ModalBody className="gap-4">
+              <Tabs aria-label="Settings tabs" color="primary" variant="underlined">
+                {/* TTS Settings Tab | TTS 设置标签页 */}
+                <Tab
+                  key="tts"
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Volume2 size={16} />
+                      <span>语音设置</span>
+                    </div>
+                  }
                 >
-                  {voiceOptions.map((voice) => (
-                    <SelectItem key={voice.key} textValue={voice.label}>
-                      {voice.label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </div>
+                  <div className="space-y-6 py-4">
+                    {/* Voice Selection - Flat Grid | 语音选择 - 平铺网格 */}
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <Mic size={16} /> 语音模型
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {voiceOptions.map((voice) => (
+                          <button
+                            key={voice.key}
+                            onClick={() => onVoiceChange(voice.key)}
+                            className={cn(
+                              "relative flex flex-col items-start p-3 rounded-lg border-2 transition-all text-left",
+                              selectedVoiceKey === voice.key
+                                ? "border-primary bg-primary/10"
+                                : "border-default-200 hover:border-default-400 hover:bg-default-100"
+                            )}
+                          >
+                            <span className="font-medium text-sm">{voice.label}</span>
+                            <span className="text-xs text-default-500">{voice.description}</span>
+                            {selectedVoiceKey === voice.key && (
+                              <Check size={14} className="absolute top-2 right-2 text-primary" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-              {/* Speed Control */}
-              <div className="space-y-4">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Volume2 size={16} /> 语速调节 ({ttsRate.toFixed(1)}x)
-                </label>
-                <Slider 
-                  size="sm"
-                  step={0.1}
-                  minValue={0.5}
-                  maxValue={2.0}
-                  value={ttsRate}
-                  onChange={(v) => onRateChange(v as number)}
-                  className="max-w-md"
-                  color="primary"
-                  showSteps={true}
-                  marks={[
-                    { value: 0.5, label: "0.5x" },
-                    { value: 1.0, label: "1.0x" },
-                    { value: 1.5, label: "1.5x" },
-                    { value: 2.0, label: "2.0x" },
-                  ]}
-                />
-              </div>
+                    {/* Speed Control | 语速调节 */}
+                    <div className="space-y-4">
+                      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <Volume2 size={16} /> 语速调节 ({ttsRate.toFixed(1)}x)
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
+                          <button
+                            key={rate}
+                            onClick={() => onRateChange(rate)}
+                            className={cn(
+                              "px-3 py-2 rounded-lg text-sm font-medium transition-all border",
+                              ttsRate === rate
+                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                : "bg-content1 hover:bg-content2 border-default-200 text-default-600"
+                            )}
+                          >
+                            {rate}x
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Tab>
 
-              {/* AI Model (Mock) */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Bot size={16} /> AI 模型
-                </label>
-                <Select defaultSelectedKeys={["gemini"]} variant="bordered">
-                  <SelectItem key="gemini">Gemini 1.5 Pro (推荐)</SelectItem>
-                  <SelectItem key="gpt4">GPT-4o</SelectItem>
-                  <SelectItem key="claude">Claude 3.5 Sonnet</SelectItem>
-                </Select>
-              </div>
+                {/* AI Provider Tab | AI 提供商标签页 */}
+                <Tab
+                  key="ai"
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Cpu size={16} />
+                      <span>AI 模型</span>
+                    </div>
+                  }
+                >
+                  <div className="py-4">
+                    <AIProviderSettings />
+                  </div>
+                </Tab>
+              </Tabs>
             </ModalBody>
-            <ModalFooter>
-              <Button color="danger" variant="light" onPress={onClose}>
-                关闭
-              </Button>
-              <Button color="primary" onPress={onClose}>
-                保存设置
+            <ModalFooter className="justify-between">
+              <div className="text-xs text-default-400">
+                提示：Edge 语音需要联网，Browser 语音取决于浏览器。
+              </div>
+              <Button color="primary" onPress={onClose} className="px-8">
+                完成
               </Button>
             </ModalFooter>
           </>
